@@ -28,8 +28,20 @@ async function run() {
     const database = client.db("HireLoopDB");
     const jobsCollection = database.collection("jobs");
 
+    // get company jobs api
+    app.get("/api/jobs", async (req, res) => {
+      const query = {};
+      if (req.query.companyId) {
+        query.companyId = req.query.companyId;
+      }
+      if (req.query.status) {
+        query.status = req.query.status;
+      }
+      const result = await jobsCollection.find(query).toArray();
+      res.send(result);
+    });
     // add now post api
-    app.post("/jobs", async (req, res) => {
+    app.post("/api/jobs", async (req, res) => {
       const newJob = req.body;
       const result = await jobsCollection.insertOne(newJob);
       res.send(result);
