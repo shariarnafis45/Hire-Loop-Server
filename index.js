@@ -27,6 +27,7 @@ async function run() {
     await client.connect();
     const database = client.db("HireLoopDB");
     const jobsCollection = database.collection("jobs");
+    const companiesCollection = database.collection("companies");
 
     // get company jobs api
     app.get("/api/jobs", async (req, res) => {
@@ -40,10 +41,26 @@ async function run() {
       const result = await jobsCollection.find(query).toArray();
       res.send(result);
     });
+    // // get companies data
+    // app.get("/api/companies", async (req, res) => {
+    //   const query = {};
+    //   if (req.query.companyId) {
+    //     query.companyId = req.query.companyId;
+    //   }
+    //   const result = await jobsCollection.find(query).toArray();
+    //   res.send(result);
+    // });
     // add now post api
     app.post("/api/jobs", async (req, res) => {
       const newJob = req.body;
       const result = await jobsCollection.insertOne(newJob);
+      res.send(result);
+    });
+
+    // company apis
+    app.post("/api/companies", async (req, res) => {
+      const newCompany = req.body;
+      const result = await companiesCollection.insertOne(newCompany);
       res.send(result);
     });
 
