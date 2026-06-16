@@ -3,7 +3,7 @@ const cors = require("cors");
 const app = express();
 const port = 5000;
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = process.env.MONGO_DB_URI;
 
 // middleware
@@ -29,7 +29,7 @@ async function run() {
     const jobsCollection = database.collection("jobs");
     const companiesCollection = database.collection("companies");
 
-    // get company jobs api
+    // get jobs api
     app.get("/api/jobs", async (req, res) => {
       const query = {};
       if (req.query.companyId) {
@@ -41,26 +41,46 @@ async function run() {
       const result = await jobsCollection.find(query).toArray();
       res.send(result);
     });
-    // // get companies data
-    // app.get("/api/companies", async (req, res) => {
-    //   const query = {};
-    //   if (req.query.companyId) {
-    //     query.companyId = req.query.companyId;
-    //   }
-    //   const result = await jobsCollection.find(query).toArray();
-    //   res.send(result);
-    // });
+
+    // get specific job by id
+    app.get("/api/jobs/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id),
+      };
+      const result = await jobsCollection.findOne(query);
+      res.send(result);
+    });
+
     // add now post api
     app.post("/api/jobs", async (req, res) => {
-      const newJob = req.body;
+      const Job = req.body;
+      const newJob = {
+        ...Job,
+        createdAt: new Date(),
+      };
       const result = await jobsCollection.insertOne(newJob);
       res.send(result);
     });
 
     // company apis
     app.post("/api/companies", async (req, res) => {
-      const newCompany = req.body;
+      const company = req.body;
+      const newCompany = {
+        ...company,
+        createdAt: new Date(),
+      };
       const result = await companiesCollection.insertOne(newCompany);
+      res.send(result);
+    });
+
+    // // get companies data
+    app.get("/api/my/companies", async (req, res) => {
+      const query = {};
+      if (req.query.recruiterId) {
+        query.recruiterId = req.query.recruiterId;
+      }
+      const result = await companiesCollection.find(query).toArray();
       res.send(result);
     });
 
