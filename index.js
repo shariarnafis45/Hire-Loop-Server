@@ -28,6 +28,7 @@ async function run() {
     const database = client.db("HireLoopDB");
     const jobsCollection = database.collection("jobs");
     const companiesCollection = database.collection("companies");
+    const jobApplicationsCollection = database.collection("applications");
 
     // get jobs api
     app.get("/api/jobs", async (req, res) => {
@@ -71,6 +72,16 @@ async function run() {
         createdAt: new Date(),
       };
       const result = await companiesCollection.insertOne(newCompany);
+      res.send(result);
+    });
+    // applications post api
+    app.post("/api/applications", async (req, res) => {
+      const application = req.body;
+      const newApplication = {
+        ...application,
+        createdAt: new Date(),
+      };
+      const result = await jobApplicationsCollection.insertOne(newApplication);
       res.send(result);
     });
 
