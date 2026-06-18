@@ -85,6 +85,20 @@ async function run() {
       res.send(result);
     });
 
+    // applicant data get api
+    app.get("/api/applications", async (req, res) => {
+      const query = {};
+      if (req.query.applicantId) {
+        query.applicantId = req.query.applicantId;
+      }
+      if (req.query.jobId) {
+        query.jobId = req.query.jobId;
+      }
+
+      const result = await jobApplicationsCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // // get companies data
     app.get("/api/my/companies", async (req, res) => {
       const query = {};
