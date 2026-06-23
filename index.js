@@ -29,6 +29,9 @@ async function run() {
     const jobsCollection = database.collection("jobs");
     const companiesCollection = database.collection("companies");
     const jobApplicationsCollection = database.collection("applications");
+    const planCollection = database.collection("plans");
+    const subscriptionCollection = database.collection("subscriptions");
+    const userCollection = database.collection("user");
 
     // get jobs api
     app.get("/api/jobs", async (req, res) => {
@@ -72,6 +75,7 @@ async function run() {
         createdAt: new Date(),
       };
       const result = await companiesCollection.insertOne(newCompany);
+
       res.send(result);
     });
     // applications post api
@@ -83,6 +87,23 @@ async function run() {
       };
       const result = await jobApplicationsCollection.insertOne(newApplication);
       res.send(result);
+    });
+    // subscriptions post api
+    app.post("/api/subscriptions", async (req, res) => {
+      const subscription = req.body;
+      const newSubscription = {
+        ...subscription,
+        createdAt: new Date(),
+      };
+      const result = await subscriptionCollection.insertOne(newSubscription);
+      const filter = { email: subscription.email };
+      const updateData = {
+        $set: {
+          plan: subscription.planId,
+        },
+      };
+      const finalResult = await userCollection.updateOne(filter, updateData);
+      res.send(finalResult);
     });
 
     // applicant data get api
@@ -106,6 +127,28 @@ async function run() {
         query.recruiterId = req.query.recruiterId;
       }
       const result = await companiesCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // admin company update api
+    app.patch("/api/companies/:id", async (req, res) => {
+      const id = req.params.id;
+      const companyData = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: companyData.status,
+        },
+      };
+      const result = await companiesCollection.updateOne(filter, updateDoc);
+    });
+    // // plans Get api
+    app.get("/api/plans", async (req, res) => {
+      const query = {};
+      if (req.query.plan_id) {
+        query.plan_id = req.query.plan_id;
+      }
+      const result = await planCollection.find(query).toArray();
       res.send(result);
     });
 
