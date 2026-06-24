@@ -31,7 +31,57 @@ async function run() {
     const jobApplicationsCollection = database.collection("applications");
     const planCollection = database.collection("plans");
     const subscriptionCollection = database.collection("subscriptions");
+    const sessionCollection = database.collection("session");
     const userCollection = database.collection("user");
+
+    // verify related middle ware
+    const verifyToken = async (req, res, next) => {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return res.status(401).send({ message: "unauthorized" });
+      }
+      const token = authHeader.split(" ")[1];
+      if (!token) {
+        return res.status(401).send({ message: "unauthorized" });
+      }
+
+      const query = {
+        token: token,
+      };
+      const session = await sessionCollection.findOne(query);
+      const userQuery = {
+        _id: session?.userId,
+      };
+      const user = await userCollection.findOne(userQuery);
+
+      req.user = user;
+      next();
+    };
+
+    const verifySeeker = async (req, res, next) => {
+      const user = req.user;
+      if (user.role !== "seeker") {
+        return res.status(403).send({ message: "forbidden" });
+      }
+      next();
+    };
+
+    // admin verification
+    const verifyAdmin = async (req, res, next) => {
+      const user = req.user;
+      if (user.role !== "admin") {
+        return res.status(403).send({ message: "forbidden" });
+      }
+      next();
+    };
+    // recruiter verification
+    const verifyRecruiter = async (req, res, next) => {
+      const user = req.user;
+      if (user.role !== "recruiter") {
+        return res.status(403).send({ message: "forbidden" });
+      }
+      next();
+    };
 
     // get jobs api
     app.get("/api/jobs", async (req, res) => {
@@ -57,7 +107,7 @@ async function run() {
     });
 
     // add now post api
-    app.post("/api/jobs", async (req, res) => {
+    app.post("/api/jobs", verifyToken, verifyRecruiter, async (req, res) => {
       const Job = req.body;
       const newJob = {
         ...Job,
@@ -107,21 +157,30 @@ async function run() {
     });
 
     // applicant data get api
-    app.get("/api/applications", async (req, res) => {
-      const query = {};
-      if (req.query.applicantId) {
-        query.applicantId = req.query.applicantId;
-      }
-      if (req.query.jobId) {
-        query.jobId = req.query.jobId;
-      }
+    app.get(
+      "/api/applications",
+      verifyToken,
+      verifySeeker,
+      async (req, res) => {
+        const query = {};
+        if (req.query.applicantId) {
+          query.applicantId = req.query.applicantId;
+        }
+        // check user id and applicant id matched or not
+        if (req.user._id.toString() !== req.query.applicantId) {
+          return res.status(403).send({ message: "forbidden" });
+        }
+        if (req.query.jobId) {
+          query.jobId = req.query.jobId;
+        }
 
-      const result = await jobApplicationsCollection.find(query).toArray();
-      res.send(result);
-    });
+        const result = await jobApplicationsCollection.find(query).toArray();
+        res.send(result);
+      },
+    );
 
     // // get companies data
-    app.get("/api/my/companies", async (req, res) => {
+    app.get("/api/my/companies", verifyToken, async (req, res) => {
       const query = {};
       if (req.query.recruiterId) {
         query.recruiterId = req.query.recruiterId;
@@ -131,17 +190,23 @@ async function run() {
     });
 
     // admin company update api
-    app.patch("/api/companies/:id", async (req, res) => {
-      const id = req.params.id;
-      const companyData = req.body;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          status: companyData.status,
-        },
-      };
-      const result = await companiesCollection.updateOne(filter, updateDoc);
-    });
+    app.patch(
+      "/api/companies/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const companyData = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            status: companyData.status,
+          },
+        };
+        const result = await companiesCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      },
+    );
     // // plans Get api
     app.get("/api/plans", async (req, res) => {
       const query = {};
