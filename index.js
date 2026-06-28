@@ -85,17 +85,62 @@ async function run() {
 
     // get jobs api
     app.get("/api/jobs", async (req, res) => {
-      const query = {};
-      if (req.query.companyId) {
-        query.companyId = req.query.companyId;
-      }
-      if (req.query.status) {
-        query.status = req.query.status;
-      }
-      const result = await jobsCollection.find(query).toArray();
-      res.send(result);
-    });
+      try {
+        const query = {};
+        if (req.query.search) {
+          query.$or = [
+            { title: { $regex: req.query.search, $options: "i" } },
+            { requirements: { $regex: req.query.search, $options: "i" } },
+          ];
+        }
+        if (req.query.location) {
+          query.$or = [
+            { location: { $regex: req.query.location, $options: "i" } },
+          ];
+        }
 
+        if (req.query.isRemote === "true") {
+          query.isRemote = true;
+        }
+
+        if (req.query.jobType) {
+          const jobTypesArray = req.query.jobType
+            .split(",")
+            .filter((type) => type !== "Remote");
+
+          if (jobTypesArray.length > 0) {
+            query.jobType = { $in: jobTypesArray };
+          }
+        }
+        // pagination
+
+        if (req.query.page) {
+          const page = req.query.page;
+          const perPage = req.query.perPage || 8;
+          const skipItem = (page - 1) * perPage;
+          const jobs = await jobsCollection
+            .find(query)
+            .skip(skipItem)
+            .limit(perPage)
+            .toArray();
+          const total = await jobsCollection.countDocuments(query);
+          return res.send({jobs, total});
+        }
+        // company related
+        if (req.query.companyId) {
+          query.companyId = req.query.companyId;
+        }
+        if (req.query.status) {
+          query.status = req.query.status;
+        }
+
+        const result = await jobsCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
     // get specific job by id
     app.get("/api/jobs/:id", async (req, res) => {
       const id = req.params.id;
